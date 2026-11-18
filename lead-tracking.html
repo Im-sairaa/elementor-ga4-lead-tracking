@@ -1,0 +1,56 @@
+<!--
+  Elementor GA4 Lead Tracking
+  Sends GA4 events for Elementor form leads and contact clicks.
+  Author: Saira Shakeel - https://sairashakeel.com/
+
+  Requirements:
+  - GA4 already installed on the site (for example with Google Site Kit),
+    so that window.gtag exists.
+  - Elementor Pro (or PRO Elements) forms for the generate_lead event.
+
+  Install: Elementor > Custom Code > Add New
+           Location: </body> - End, Conditions: Entire Site.
+-->
+<script>
+(function () {
+  'use strict';
+
+  // Send an event only when GA4 is loaded.
+  // Site Kit does not load GA4 for logged-in users when "Exclude logged-in users" is on,
+  // so your own visits are not counted.
+  function sendEvent(name, params) {
+    if (typeof window.gtag === 'function') {
+      window.gtag('event', name, params || {});
+    }
+  }
+
+  // 1. Lead: an Elementor form was submitted successfully.
+  //    Elementor triggers the jQuery event "submit_success" on the form.
+  if (window.jQuery) {
+    window.jQuery(document).on('submit_success', function (event) {
+      var form = event.target;
+      sendEvent('generate_lead', {
+        form_name: (form && form.getAttribute('name')) || 'elementor_form',
+        page_path: window.location.pathname
+      });
+    });
+  }
+
+  // 2. Contact clicks: WhatsApp, email and phone links.
+  document.addEventListener('click', function (event) {
+    var link = event.target.closest ? event.target.closest('a[href]') : null;
+    if (!link) return;
+
+    var href = link.getAttribute('href') || '';
+    var cleanHref = href.split('?')[0]; // drop pre-filled message text
+
+    if (/^https?:\/\/(wa\.me|api\.whatsapp\.com|web\.whatsapp\.com)/i.test(href)) {
+      sendEvent('whatsapp_click', { link_url: cleanHref, page_path: window.location.pathname });
+    } else if (/^mailto:/i.test(href)) {
+      sendEvent('email_click', { link_url: cleanHref, page_path: window.location.pathname });
+    } else if (/^tel:/i.test(href)) {
+      sendEvent('phone_click', { link_url: href, page_path: window.location.pathname });
+    }
+  });
+})();
+</script>
